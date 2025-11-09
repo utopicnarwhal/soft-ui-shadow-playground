@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neumorphic Light & Shadow Generator</title>
+    <!-- Load Tailwind CSS --><script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font and base styles */
+        body { font-family: 'Inter', sans-serif; }
+        [x-cloak] { display: none !important; }
+
+        /* Custom shadow utility for the control panel (less intrusive than a full neumorphic style) */
+        .panel-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Styling for the Neumorphic Card Preview - this is manipulated by JS */
+        #preview-card {
+            transition: all 0.2s ease-out;
+        }
+
+        /* Inset shadow utility for the inner shadow code preview */
+        .inset-style {
+            box-shadow: inset 5px 5px 10px #bebebe, inset -5px -5px 10px #ffffff;
+        }
+
+        /* Scrollbar styling for code blocks */
+        .code-block::-webkit-scrollbar {
+            height: 4px;
+        }
+        .code-block::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5); /* gray-400 */
+            border-radius: 2px;
+        }
+        .code-block::-webkit-scrollbar-track {
+            background: transparent;
+        }
+    </style>
+    <!-- Configure Tailwind to use Inter font and handle dark mode via class --><script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'surface-light': '#e0e5ec', /* Default base color */
+                        'surface-dark': '#24272c', /* Default dark base color */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-light dark:bg-surface-dark transition-colors duration-500 min-h-screen p-4 sm:p-8">
+
+    <div id="app" class="max-w-7xl mx-auto">
+        <!-- Header and Theme Switcher --><header class="flex justify-between items-center mb-8 p-3">
+            <h1 class="text-3xl font-extrabold text-gray-800 dark:text-gray-100">
+                Soft UI Shadow Playground
+            </h1>
+            <button id="theme-toggle" class="p-2 rounded-full shadow-lg dark:shadow-none transition-all duration-300 transform hover:scale-105">
+                <!-- Sun Icon (Light Mode) --><svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+                <!-- Moon Icon (Dark Mode) --><svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </button>
+        </header>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+
+            <!-- Controls Panel (Column 1) --><div id="controls" class="lg:col-span-1 p-6 rounded-xl panel-shadow dark:shadow-none bg-surface-light dark:bg-surface-dark text-gray-800 dark:text-gray-200 transition-colors duration-500">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 border-gray-300 dark:border-gray-700">Shadow Parameters</h2>
+
+                <div class="space-y-6">
+
+                    <!-- Base Color Picker --><div>
+                        <label for="baseColor" class="block text-sm font-medium mb-1">Base Surface Color</label>
+                        <input type="color" id="baseColor" value="#e0e5ec"
+                               class="w-full h-10 p-1 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-transparent">
+                    </div>
+
+                    <!-- Light Angle Slider --><div>
+                        <label for="lightAngle" class="block text-sm font-medium mb-1">Light Angle: <span id="angleValue">235</span>°</label>
+                        <input type="range" id="lightAngle" min="0" max="360" value="235"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                    </div>
+
+                    <!-- Shadow Distance Slider --><div>
+                        <label for="shadowDistance" class="block text-sm font-medium mb-1">Shadow Distance (Blur/Size): <span id="distanceValue">43</span>px</label>
+                        <input type="range" id="shadowDistance" min="5" max="50" value="43"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                    </div>
+
+                    <!-- Card Elevation Slider --><div>
+                        <label for="cardElevation" class="block text-sm font-medium mb-1">Card Elevation (Z-Axis/Intensity): <span id="elevationValue">1.5</span>x</label>
+                        <input type="range" id="cardElevation" min="0.5" max="3" value="1.5" step="0.1"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                    </div>
+                    
+                    <!-- Inner Shadow Intensity Slider -->
+                    <div>
+                        <label for="innerIntensity" class="block text-sm font-medium mb-1">Inner Light Intensity: <span id="innerIntensityValue">7</span>%</label>
+                        <input type="range" id="innerIntensity" min="0" max="100" value="7"
+                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Preview and Code Output (Columns 2 & 3) --><div class="lg:col-span-2 space-y-8">
+
+                <!-- Live Preview Card --><div class="flex flex-col items-center justify-center p-6 sm:p-12 h-64 rounded-xl bg-surface-light dark:bg-surface-dark transition-colors duration-500">
+                    <div id="preview-card"
+                         class="w-48 h-48 rounded-3xl flex items-center justify-center text-center text-lg font-bold text-gray-700 dark:text-gray-300 border-0 border-transparent"
+                         style="background-color: var(--base-color);">
+                        Preview Card
+                    </div>
+                </div>
+
+                <!-- Code Output Tabs --><div class="bg-white dark:bg-gray-800 rounded-xl panel-shadow dark:shadow-none p-4 text-gray-800 dark:text-gray-200 transition-colors duration-500">
+                    <div class="flex border-b border-gray-200 dark:border-gray-700">
+                        <button class="tab-button p-2 text-sm font-medium border-b-2 transition-colors duration-300" data-tab="css" onclick="changeTab('css')">CSS Output</button>
+                        <button class="tab-button p-2 text-sm font-medium border-b-2 transition-colors duration-300" data-tab="flutter" onclick="changeTab('flutter')">Flutter Output</button>
+                    </div>
+
+                    <div id="css-tab" class="tab-content pt-4 space-y-4">
+                        <h3 class="font-semibold text-lg">Drop Shadow (Raised, with Inner Light)</h3>
+                        <pre id="css-drop-shadow" class="code-block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto text-xs sm:text-sm"></pre>
+
+                        <h3 class="font-semibold text-lg">Inner Shadow (Pressed)</h3>
+                        <pre id="css-inner-shadow" class="code-block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto text-xs sm:text-sm"></pre>
+
+                        <h3 class="font-semibold text-lg">Card Background Gradient</h3>
+                        <pre id="css-gradient" class="code-block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto text-xs sm:text-sm"></pre>
+                    </div>
+
+                    <div id="flutter-tab" class="tab-content pt-4 space-y-4 hidden">
+                        <h3 class="font-semibold text-lg">BoxShadow (Raised, with Inner Light)</h3>
+                        <pre id="flutter-drop-shadow" class="code-block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto text-xs sm:text-sm"></pre>
+
+                        <h3 class="font-semibold text-lg">BoxShadow (Pressed/Inner)</h3>
+                        <pre id="flutter-inner-shadow" class="code-block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto text-xs sm:text-sm"></pre>
+
+                        <h3 class="font-semibold text-lg">LinearGradient</h3>
+                        <pre id="flutter-gradient" class="code-block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto text-xs sm:text-sm"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Core Application State & Constants ---
+        const ELEMENTS = {
+            card: document.getElementById('preview-card'),
+            angleInput: document.getElementById('lightAngle'),
+            distanceInput: document.getElementById('shadowDistance'),
+            elevationInput: document.getElementById('cardElevation'),
+            innerIntensityInput: document.getElementById('innerIntensity'), 
+            baseColorInput: document.getElementById('baseColor'),
+            angleValue: document.getElementById('angleValue'),
+            distanceValue: document.getElementById('distanceValue'),
+            elevationValue: document.getElementById('elevationValue'),
+            innerIntensityValue: document.getElementById('innerIntensityValue'), 
+            themeToggle: document.getElementById('theme-toggle'),
+            cssDrop: document.getElementById('css-drop-shadow'),
+            cssInner: document.getElementById('css-inner-shadow'),
+            cssGradient: document.getElementById('css-gradient'),
+            flutterDrop: document.getElementById('flutter-drop-shadow'),
+            flutterInner: document.getElementById('flutter-inner-shadow'),
+            flutterGradient: document.getElementById('flutter-gradient'),
+            sunIcon: document.getElementById('sun-icon'),
+            moonIcon: document.getElementById('moon-icon'),
+        };
+
+        let isDarkMode = document.documentElement.classList.contains('dark');
+
+        // --- Utility Functions ---
+
+        /** Converts Hex color to HSL object. */
+        function hexToHsl(hex) {
+            let r = 0, g = 0, b = 0;
+            if (hex.length == 7) {
+                r = parseInt(hex.substring(1, 3), 16);
+                g = parseInt(hex.substring(3, 5), 16);
+                b = parseInt(hex.substring(5, 7), 16);
+            }
+
+            r /= 255; g /= 255; b /= 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+
+            if (max == min) {
+                h = s = 0; // achromatic
+            } else {
+                let d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+
+            return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+        }
+
+        /** Converts HSL object back to Hex string. */
+        function hslToHex(h, s, l) {
+            h /= 360;
+            s /= 100;
+            l /= 100;
+            let r, g, b;
+
+            if (s === 0) {
+                r = g = b = l; // achromatic
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1 / 6) return p + (q - p) * 6 * t;
+                    if (t < 1 / 2) return q;
+                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                };
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+            }
+
+            const toHex = x => {
+                const hex = Math.round(x * 255).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            };
+            return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+        }
+
+        /** Lightens or darkens a hex color by a percentage. */
+        function adjustColor(hex, percent, saturationBoost = 0) {
+            const hsl = hexToHsl(hex);
+            const newL = Math.max(0, Math.min(100, hsl.l + percent));
+            const newS = Math.max(0, Math.min(100, hsl.s + saturationBoost));
+            return hslToHex(hsl.h, newS, newL);
+        }
+
+        /** Formats a color for Flutter (0xFF + Hex value) */
+        function getFlutterColor(hex) {
+            return `const Color(0xFF${hex.substring(1).toUpperCase()})`;
+        }
+
+
+        // --- Main Calculation Logic ---
+
+        function updateShadows() {
+            const baseHex = ELEMENTS.baseColorInput.value;
+            const angle = parseFloat(ELEMENTS.angleInput.value);
+            const distance = parseFloat(ELEMENTS.distanceInput.value);
+            const elevationFactor = parseFloat(ELEMENTS.elevationInput.value);
+            const innerIntensity = parseFloat(ELEMENTS.innerIntensityInput.value); 
+
+            // Update display values
+            ELEMENTS.angleValue.textContent = angle;
+            ELEMENTS.distanceValue.textContent = distance;
+            ELEMENTS.elevationValue.textContent = elevationFactor.toFixed(1);
+            ELEMENTS.innerIntensityValue.textContent = innerIntensity; 
+
+            // --- Shadow Calculation ---
+
+            // Convert angle to radians for trig functions (CSS/Flutter use standard math angle: 0deg=East, increasing counter-clockwise. Neumorphism often uses 0deg=North, increasing clockwise. We use standard math for consistency here)
+            const angleRad = (angle - 180) * (Math.PI / 180);
+
+            // X & Y offsets are calculated based on angle and distance 
+            const offsetX = Math.round(distance * Math.cos(angleRad) * elevationFactor);
+            const offsetY = Math.round(distance * Math.sin(angleRad) * elevationFactor);
+
+            // Base Blur is proportional to distance and elevation
+            const blur = Math.round(distance * elevationFactor * 2);
+            const spread = Math.round(distance * elevationFactor * 0.1); 
+            const blurPressed = Math.round(distance * elevationFactor * 1.5); 
+            
+            // Calculate Inner Light Blur based on the new Intensity slider value (0 to 100)
+            const maxInnerBlur = Math.round(distance * elevationFactor * 1.2); 
+            const blurInnerLight = Math.round(maxInnerBlur * (innerIntensity / 100.0));
+
+            // Scale the inner shadow position based on intensity (0 to 1)
+            const innerMultiplier = innerIntensity / 100.0;
+            const innerOffsetX = Math.round(offsetX * innerMultiplier);
+            const innerOffsetY = Math.round(offsetY * innerMultiplier);
+
+            // --- Color Calculation ---
+
+            // Increased contrast for better visibility of the volumetric effect (15% lightness shift)
+            const lightColor = adjustColor(baseHex, 15, -5); 
+            const darkColor = adjustColor(baseHex, -15, 5); 
+
+            // Set the dynamic base color variable for the preview card
+            document.documentElement.style.setProperty('--base-color', baseHex);
+            ELEMENTS.card.style.backgroundColor = baseHex;
+
+            // --- Apply to Preview Card (Drop Shadow/Raised with Inner Light) ---
+            // Outer Dark Shadow: Cast away from light source (+X, +Y)
+            // Inner Light Shadow: Inset highlight using user-requested positive offsets, scaled by intensity.
+            const dropShadowStyle = `
+                ${offsetX}px ${offsetY}px ${blur}px ${spread}px ${darkColor}, /* Outer Dark Shadow (Cast Shadow) */
+                inset ${innerOffsetX}px ${innerOffsetY}px ${blurInnerLight}px 0px ${lightColor} /* Inner Light Highlight (Scaled Offset) */
+            `;
+            ELEMENTS.card.style.boxShadow = dropShadowStyle;
+
+            // --- Generate CSS Code Snippets ---
+
+            // 1. CSS Drop Shadow (Raised with Inner Light)
+            ELEMENTS.cssDrop.textContent = `box-shadow: ${dropShadowStyle};
+background-color: ${baseHex}; /* For card body */
+border-radius: 20px;
+`;
+
+            // 2. CSS Inner Shadow (Pressed)
+            const innerShadowStyle = `
+                inset ${offsetX}px ${offsetY}px ${blurPressed}px 0px ${darkColor},
+                inset ${-offsetX}px ${-offsetY}px ${blurPressed}px 0px ${lightColor}
+            `;
+            ELEMENTS.cssInner.textContent = `box-shadow: ${innerShadowStyle};
+background-color: ${baseHex}; /* For card body */
+border-radius: 20px;
+`;
+
+            // 3. CSS Gradient (Subtle depth)
+            const gradientDeg = angle - 90;
+            ELEMENTS.cssGradient.textContent = `background: linear-gradient(${gradientDeg}deg, ${lightColor}, ${darkColor});`;
+
+            // --- Generate Flutter Code Snippets ---
+            const flutterLightColor = getFlutterColor(lightColor);
+            const flutterDarkColor = getFlutterColor(darkColor);
+            const flutterBaseColor = getFlutterColor(baseHex);
+
+            // 1. Flutter BoxShadow (Raised, with Inner Light)
+            // This code only generates the outer dark shadow.
+            ELEMENTS.flutterDrop.textContent = `// In a BoxDecoration's 'boxShadow' list:
+boxShadow: [
+  // Outer Dark Shadow (opposite direction of light source)
+  BoxShadow(
+    color: ${flutterDarkColor},
+    offset: Offset(${offsetX}.0, ${offsetY}.0),
+    blurRadius: ${blur}.0,
+    spreadRadius: ${spread}.0,
+  ),
+  // Note: The requested inner light highlight (Offset: ${innerOffsetX}, ${innerOffsetY}, Blur: ${blurInnerLight}) 
+  // must be achieved in Flutter using a separate element or custom paint since 
+  // BoxShadow lacks an 'inset' property.
+],
+color: ${flutterBaseColor}, // For card body
+borderRadius: BorderRadius.circular(20),
+`;
+
+            // 2. Flutter BoxShadow (Pressed/Inner)
+            // This structure simulates the pressed/inset look.
+            ELEMENTS.flutterInner.textContent = `// In a BoxDecoration's 'boxShadow' list (simulating inner shadow):
+boxShadow: [
+  // Dark Shadow (Inner - simulates light hitting the depressed edge)
+  BoxShadow(
+    color: ${flutterDarkColor},
+    offset: Offset(${offsetX}.0, ${offsetY}.0),
+    blurRadius: ${blurPressed}.0,
+    spreadRadius: 0.0,
+  ),
+  // Light Shadow (Inner - simulates shadow from light hitting the opposite depressed edge)
+  BoxShadow(
+    color: ${flutterLightColor},
+    offset: Offset(${-offsetX}.0, ${-offsetY}.0),
+    blurRadius: ${blurPressed}.0,
+    spreadRadius: 0.0,
+  ),
+],
+color: ${flutterBaseColor},
+borderRadius: BorderRadius.circular(20),
+`;
+
+            // 3. Flutter LinearGradient
+            // Calculate start and end points based on the angle (Flutter uses Alignment, not degrees)
+            const alignX = Math.cos(angleRad) * -1; // Invert for alignment, -1 to 1
+            const alignY = Math.sin(angleRad) * -1; // Invert for alignment
+            ELEMENTS.flutterGradient.textContent = `// In a BoxDecoration:
+gradient: LinearGradient(
+  begin: Alignment(${alignX.toFixed(2)}, ${alignY.toFixed(2)}), // Light Source Position
+  end: Alignment(${-alignX.toFixed(2)}, ${-alignY.toFixed(2)}), // Dark Corner Position
+  colors: [
+    ${flutterLightColor},
+    ${flutterDarkColor},
+  ],
+),
+`;
+
+        }
+
+        // --- Theme Toggling ---
+        function toggleTheme(event) {
+            isDarkMode = !isDarkMode;
+            if (isDarkMode) {
+                document.documentElement.classList.add('dark');
+                ELEMENTS.baseColorInput.value = '#24272c';
+            } else {
+                document.documentElement.classList.remove('dark');
+                ELEMENTS.baseColorInput.value = '#e0e5ec';
+            }
+            updateShadows();
+        }
+
+        // --- Tab Switching ---
+        function changeTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-button').forEach(el => {
+                el.classList.remove('border-indigo-500', 'text-indigo-600', 'dark:border-indigo-400', 'dark:text-indigo-400');
+                el.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-200');
+            });
+
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            const activeTabButton = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+            activeTabButton.classList.add('border-indigo-500', 'text-indigo-600', 'dark:border-indigo-400', 'dark:text-indigo-400');
+            activeTabButton.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'dark:text-gray-400', 'dark:hover:text-gray-200');
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        window.onload = function() {
+            // Initial check for dark mode
+            if (document.documentElement.classList.contains('dark')) {
+                ELEMENTS.baseColorInput.value = '#24272c';
+            }
+
+            // Set up all event listeners
+            ELEMENTS.angleInput.addEventListener('input', updateShadows);
+            ELEMENTS.distanceInput.addEventListener('input', updateShadows);
+            ELEMENTS.elevationInput.addEventListener('input', updateShadows);
+            ELEMENTS.innerIntensityInput.addEventListener('input', updateShadows); 
+            ELEMENTS.baseColorInput.addEventListener('input', updateShadows);
+            ELEMENTS.themeToggle.addEventListener('click', toggleTheme);
+
+            // Initial calculation and tab setup
+            updateShadows();
+            changeTab('css');
+        }
+    </script>
+</body>
+</html>
